@@ -1,105 +1,84 @@
-# Quick Local Computer Agent Demo
+# AI Video Factory (Local, n8n + Ollama + TTS Worker)
 
-This repository now includes a very small Playwright script for the use case:
+Ce projet permet de générer localement des vidéos verticales (format mobile) à partir de tendances, avec narration TTS, sous-titres et rendu vidéo via FFmpeg.
 
-- use your own browser session
-- no API
-- simple enough to test quickly
-- manual login for your own account
+## Stack
 
-## Files
+- **n8n**: orchestration visuelle du workflow
+- **Ollama**: génération texte locale (LLM)
+- **tts-worker (FastAPI)**: génération audio et rendu vidéo
+- **FFmpeg**: composition vidéo + sous-titres
 
-- `quick_agent.py`: runs a simple browser automation plan
-- `plan.example.json`: sample JSON plan you can copy and edit
-- `main.py`: existing Advent of Code script left unchanged
+## Structure du repo
 
-## Quick start
-
-1. Install Playwright:
-
-   ```bash
-   pip install playwright
-   python -m playwright install chromium
-   ```
-
-2. Run the default demo:
-
-   ```bash
-   python quick_agent.py --keep-open
-   ```
-
-   It will:
-   - open ChatGPT in a normal Chromium window
-   - wait for you to log in manually
-   - continue after you press Enter in the terminal
-
-3. Run your own plan:
-
-   ```bash
-   cp plan.example.json my-plan.json
-   python quick_agent.py --plan my-plan.json --keep-open
-   ```
-
-## Supported step types
-
-Each plan file is a JSON array of steps.
-
-### Open a page
-
-```json
-{ "action": "goto", "url": "https://example.com" }
+```text
+.
+├── docker-compose.yml
+├── docs/
+│   └── n8n_ai_video_factory_guide.md
+├── tts-worker/
+│   ├── Dockerfile
+│   └── app.py
+├── assets/
+│   └── bg/
+│       └── night1.mp4
+├── output/
+└── n8n/
 ```
 
-### Click something
+## Démarrage rapide
 
-```json
-{ "action": "click", "selector": "button" }
+```bash
+# Depuis la racine du projet
+docker compose up -d --build
+
+# (Optionnel) pull d'un modèle léger
+docker exec ollama ollama pull qwen2.5:1.5b
 ```
 
-### Fill an input instantly
+UI:
+- n8n: http://localhost:5678
+- tts-worker health: http://localhost:8000/health
 
-```json
-{ "action": "fill", "selector": "textarea", "text": "hello" }
+Stop:
+
+```bash
+docker compose down
 ```
 
-### Type like a person
+## Workflow n8n (résumé)
 
-```json
-{ "action": "type", "selector": "textarea", "text": "hello", "delay_ms": 80 }
+1. Récupération tendances
+2. Génération multi-drafts
+3. Sélection (judge)
+4. TTS depuis `{{$json.script}}`
+5. Rendu vertical via `/render-vertical`
+
+Le guide complet est ici:
+- `docs/n8n_ai_video_factory_guide.md`
+
+## Fichiers générés
+
+Dans `./output`:
+- `monologue_*.mp3`
+- `doc_*.srt`
+- `doc_*.mp4`
+
+## Mettre ce repo en privé sur GitHub
+
+Je ne peux pas modifier directement la visibilité de ton dépôt GitHub depuis ici, mais tu peux le faire en 1 minute:
+
+1. Ouvre ton repo sur GitHub
+2. `Settings` → `General`
+3. Descends à `Danger Zone`
+4. Clique **Change repository visibility**
+5. Sélectionne **Make private**
+6. Confirme le nom du repo
+
+Alternative via GitHub CLI:
+
+```bash
+gh repo edit --visibility private
 ```
 
-### Wait for an element
-
-```json
-{ "action": "wait_for", "selector": "text=Profile" }
-```
-
-### Sleep a little
-
-```json
-{ "action": "sleep", "ms": 1500 }
-```
-
-### Stop and let you take over
-
-```json
-{ "action": "pause" }
-```
-
-### Print a note in the terminal
-
-```json
-{ "action": "note", "message": "Check the page before continuing." }
-```
-
-## Why this is useful for a quick test
-
-This is not a full AI agent. It is a tiny local browser automation runner.
-
-That makes it good for a fast reality check:
-
-- you can see whether browser automation is enough for your workflow
-- you can use your real account manually
-- you do not need to build an API-based system first
-
-If this feels promising, the next step would be adding saved login state, better selectors, retries, or a caption-generation layer.
+(Exécute la commande depuis le repo local, après `gh auth login`.)
