@@ -82,3 +82,11 @@ gh repo edit --visibility private
 ```
 
 (Exécute la commande depuis le repo local, après `gh auth login`.)
+If this feels promising, the next step would be adding saved login state, better selectors, retries, or a caption-generation layer.
+
+
+## n8n + Docker video pipeline
+
+A full start-to-finish guide (including Docker, n8n flow, TTS, and vertical video render) is available at:
+
+- `docs/n8n_ai_video_factory_guide.md`
