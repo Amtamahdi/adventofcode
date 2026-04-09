@@ -4,7 +4,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir fastapi uvicorn edge-tts
+RUN python -m pip install --no-cache-dir --upgrade pip && \
+    python -m pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    edge-tts \
+    pydantic \
+    faster-whisper
 
 WORKDIR /app
 COPY app.py /app/app.py
