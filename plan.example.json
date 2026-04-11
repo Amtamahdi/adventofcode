@@ -1,0 +1,21 @@
+[
+  {
+    "action": "goto",
+    "url": "https://chat.openai.com/"
+  },
+  {
+    "action": "note",
+    "message": "Log in manually with your own account in the browser window."
+  },
+  {
+    "action": "pause"
+  },
+  {
+    "action": "goto",
+    "url": "https://chat.openai.com/?model=gpt-4o-mini"
+  },
+  {
+    "action": "note",
+    "message": "Now replace this file with your real target steps, such as more pages, clicks, and typing."
+  }
+]

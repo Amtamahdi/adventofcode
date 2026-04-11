@@ -5,11 +5,12 @@ import re
 import subprocess
 import uuid
 from pathlib import Path
+from typing import Any
 
 import edge_tts
 from fastapi import FastAPI
-from pydantic import BaseModel
 from faster_whisper import WhisperModel
+from pydantic import BaseModel
 
 app = FastAPI(title="n8n TTS/Video Helper")
 
@@ -18,11 +19,13 @@ ASSETS_DIR = Path("/assets")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-# CPU-safe defaults for Windows/local machine
-WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "small")
+# CPU-safe defaults for local machines, but load Whisper lazily to keep startup light.
+WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "tiny")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
 WHISPER_COMPUTE = os.getenv("WHISPER_COMPUTE", "int8")
-WHISPER = WhisperModel(WHISPER_MODEL_SIZE, device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE)
+MAX_WORDS_PER_PHRASE = int(os.getenv("MAX_WORDS_PER_PHRASE", "4"))
+
+WHISPER: WhisperModel | None = None
 
 
 class TTSIn(BaseModel):
@@ -42,6 +45,17 @@ class RenderIn(BaseModel):
     bg_path: str = "/assets/bg/night1.mp4"
     output_name: str = "doc_output.mp4"
     resolution: str = "1080x1920"
+
+
+def _get_whisper() -> WhisperModel:
+    global WHISPER
+    if WHISPER is None:
+        WHISPER = WhisperModel(
+            WHISPER_MODEL_SIZE,
+            device=WHISPER_DEVICE,
+            compute_type=WHISPER_COMPUTE,
+        )
+    return WHISPER
 
 
 def _safe_name(name: str, fallback_ext: str) -> str:
@@ -99,51 +113,38 @@ Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
         ass_path.write_text("\n".join(lines), encoding="utf-8")
         return
 
-    max_words_per_phrase = 4
-
-    def ts(t: float) -> str:
-        t = max(0.0, t)
-        h = int(t // 3600)
-        m = int((t % 3600) // 60)
-        s = t % 60
-        return f"{h}:{m:02}:{s:05.2f}"
-
-    # split into small phrases
-    for i in range(0, len(words), max_words_per_phrase):
-        chunk = words[i:i + max_words_per_phrase]
+    step = max(1, MAX_WORDS_PER_PHRASE)
+    for i in range(0, len(words), step):
+        chunk = words[i : i + step]
         if not chunk:
             continue
 
-        # create one dialogue event per spoken word
-        for wi, w in enumerate(chunk):
-            ws = float(w["start"])
-            we = float(w["end"])
-            if we <= ws:
-                we = ws + 0.12
+        for active_idx, active in enumerate(chunk):
+            start = float(active["start"])
+            end = float(active["end"])
+            if end <= start:
+                end = start + 0.12
 
-            rendered = []
-            for j, ww in enumerate(chunk):
-                text = str(ww["text"]).strip()
+            rendered: list[str] = []
+            for idx, w in enumerate(chunk):
+                text = str(w["text"]).strip()
                 if not text:
                     continue
-
-                if j == wi:
-                    # active/current word highlighted (yellow)
+                if idx == active_idx:
                     rendered.append(r"{\c&H00D7FF&\b1}" + text + r"{\c&H00FFFFFF&}")
                 else:
-                    # normal words (white)
                     rendered.append(text)
 
-            line = " ".join(rendered).strip()
-            if not line:
+            if not rendered:
                 continue
 
             lines.append(
-                f"Dialogue: 0,{ts(ws)},{ts(we)},K,,0,0,0,,{line}"
+                f"Dialogue: 0,{_sec_to_ass_time(start)},{_sec_to_ass_time(end)},K,,0,0,0,,{' '.join(rendered)}"
             )
 
     ass_path.write_text("\n".join(lines), encoding="utf-8")
-    
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -174,7 +175,8 @@ async def align_words(req: AlignIn) -> dict[str, Any]:
     ass_name = _safe_name(req.ass_name or f"{audio_path.stem}.ass", ".ass")
     ass_path = OUTPUT_DIR / ass_name
 
-    segments, info = WHISPER.transcribe(
+    whisper = _get_whisper()
+    segments, info = whisper.transcribe(
         str(audio_path),
         beam_size=5,
         word_timestamps=True,
@@ -183,14 +185,13 @@ async def align_words(req: AlignIn) -> dict[str, Any]:
 
     words: list[dict[str, float | str]] = []
     for seg in segments:
-        seg_words = seg.words or []
-        for ww in seg_words:
-            if ww.start is None or ww.end is None:
+        for w in seg.words or []:
+            if w.start is None or w.end is None:
                 continue
-            text = _normalize_word(ww.word or "")
+            text = _normalize_word(w.word or "")
             if not text:
                 continue
-            words.append({"start": float(ww.start), "end": float(ww.end), "text": text})
+            words.append({"start": float(w.start), "end": float(w.end), "text": text})
 
     _build_ass_karaoke(words, ass_path)
 
@@ -219,7 +220,6 @@ async def render_vertical(req: RenderIn) -> dict[str, Any]:
 
     output_name = _safe_name(req.output_name, ".mp4")
     output_path = OUTPUT_DIR / output_name
-
     w, h = _parse_resolution(req.resolution)
 
     ass_for_ffmpeg = (

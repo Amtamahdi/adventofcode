@@ -10,6 +10,7 @@ Simple project to generate a short video with:
 
 - `assets/`: background media used in the final video
 - `data/`: temporary text/data files created during the pipeline
+- `docs/`: project guide kept from the older GitHub repo
 - `n8n/`: local n8n configuration and workflow database
 - `output/`: generated audio, captions, and video files
 - `scripts/`: small pipeline scripts
