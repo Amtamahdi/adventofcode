@@ -1,0 +1,534 @@
+{
+  "name": "AI Video Factory Full Pipeline",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        260
+      ],
+      "id": "manual-trigger",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.reddit.com/r/all/hot.json",
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "20"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "ai-video-factory/2.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -980,
+        260
+      ],
+      "id": "fetch-reddit",
+      "name": "Fetch Reddit Trends"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\nconst children = payload?.data?.children ?? [];\n\nconst trends = children\n  .map((child) => {\n    const data = child.data || {};\n    return {\n      title: String(data.title || '').trim(),\n      url: `https://reddit.com${data.permalink || ''}`,\n      score: Number(data.ups || 0),\n      text: String(data.selftext || '').slice(0, 800),\n      subreddit: String(data.subreddit || ''),\n      source: 'reddit',\n    };\n  })\n  .filter((item) => item.title.length > 0)\n  .sort((a, b) => b.score - a.score);\n\nconst fallbackA = {\n  title: 'AI software architecture trend A',\n  url: 'https://example.com/a',\n  score: 1,\n  text: 'Fallback topic A',\n  subreddit: 'fallback',\n  source: 'fallback',\n};\n\nconst fallbackB = {\n  title: 'AI software architecture trend B',\n  url: 'https://example.com/b',\n  score: 1,\n  text: 'Fallback topic B',\n  subreddit: 'fallback',\n  source: 'fallback',\n};\n\nconst trendA = trends[0] || fallbackA;\nconst trendB = trends[1] || trends[0] || fallbackB;\n\nreturn [{\n  json: {\n    trendA,\n    trendB,\n    fetchedCount: trends.length,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        260
+      ],
+      "id": "normalize-trends",
+      "name": "Normalize Trends"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic-a",
+              "name": "topicA",
+              "value": "={{$json.trendA.title}}",
+              "type": "string"
+            },
+            {
+              "id": "url-a",
+              "name": "urlA",
+              "value": "={{$json.trendA.url}}",
+              "type": "string"
+            },
+            {
+              "id": "prompt-a",
+              "name": "promptA",
+              "value": "={{\"Create a high-retention explainer monologue for a short documentary video about: \" + $json.trendA.title + \". Use a strong hook, smooth transitions, and keep the tone factual but engaging.\"}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -520,
+        140
+      ],
+      "id": "draft-a-setup",
+      "name": "Draft A Setup"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic-b",
+              "name": "topicB",
+              "value": "={{$json.trendB.title}}",
+              "type": "string"
+            },
+            {
+              "id": "url-b",
+              "name": "urlB",
+              "value": "={{$json.trendB.url}}",
+              "type": "string"
+            },
+            {
+              "id": "prompt-b",
+              "name": "promptB",
+              "value": "={{\"Create a storytelling-style monologue for a short documentary video about: \" + $json.trendB.title + \". Make it emotional, clear, and grounded in the source context.\"}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -520,
+        380
+      ],
+      "id": "draft-b-setup",
+      "name": "Draft B Setup"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'qwen2.5:3b', stream: false, keep_alive: '30m', messages: [ { role: 'system', content: 'You are an expert viral content scriptwriter. Output plain text only, no markdown. Write 1400-1700 words for a vertical documentary narration.' }, { role: 'user', content: $json.promptA + '\\n\\nReference URL: ' + $json.urlA } ] } }}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -260,
+        140
+      ],
+      "id": "ai-writer-a",
+      "name": "AI Writer A"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'qwen2.5:3b', stream: false, keep_alive: '30m', messages: [ { role: 'system', content: 'You are an expert viral content scriptwriter. Output plain text only, no markdown. Write 1400-1700 words for a vertical documentary narration.' }, { role: 'user', content: $json.promptB + '\\n\\nReference URL: ' + $json.urlB } ] } }}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -260,
+        380
+      ],
+      "id": "ai-writer-b",
+      "name": "AI Writer B"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    draftA: $json.message?.content ?? '',\n    topicA: $items('Draft A Setup', 0, 0)[0]?.json?.topicA ?? '',\n    urlA: $items('Draft A Setup', 0, 0)[0]?.json?.urlA ?? '',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        140
+      ],
+      "id": "extract-draft-a",
+      "name": "Extract Draft A"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    draftB: $json.message?.content ?? '',\n    topicB: $items('Draft B Setup', 0, 0)[0]?.json?.topicB ?? '',\n    urlB: $items('Draft B Setup', 0, 0)[0]?.json?.urlB ?? '',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        380
+      ],
+      "id": "extract-draft-b",
+      "name": "Extract Draft B"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        220,
+        260
+      ],
+      "id": "merge-drafts",
+      "name": "Merge Drafts"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'llama3.2:3b', stream: false, keep_alive: '30m', messages: [ { role: 'system', content: 'You are a strict content judge. Return JSON only with keys winner, reason, scoreA, scoreB.' }, { role: 'user', content: 'Compare these two scripts for retention, clarity, and documentary pacing. Return strict JSON only.\\n\\nCandidate A topic: ' + $json.topicA + '\\nCandidate A URL: ' + $json.urlA + '\\nCandidate A:\\n' + $json.draftA + '\\n\\nCandidate B topic: ' + $json.topicB + '\\nCandidate B URL: ' + $json.urlB + '\\nCandidate B:\\n' + $json.draftB + '\\n\\nReturn exactly: {\"winner\":\"A or B\",\"reason\":\"...\",\"scoreA\":0,\"scoreB\":0}' } ] } }}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        460,
+        260
+      ],
+      "id": "judge-draft",
+      "name": "Judge Best Draft"
+    },
+    {
+      "parameters": {
+        "jsCode": "function parseJudge(raw) {\n  const text = String(raw || '').replace(/```json/gi, '').replace(/```/g, '').trim();\n\n  try {\n    return JSON.parse(text);\n  } catch {}\n\n  try {\n    const unquoted = text.replace(/^\"+|\"+$/g, '');\n    return JSON.parse(unquoted.replace(/\\\\\"/g, '\"').replace(/\\\\n/g, '\\n').replace(/\\\\\\\\/g, '\\\\'));\n  } catch {}\n\n  const winnerMatch = text.match(/\"winner\"\\s*:\\s*\"([ABab])\"/);\n  const reasonMatch = text.match(/\"reason\"\\s*:\\s*\"([\\s\\S]*?)\"\\s*(,|\\})/);\n  const scoreAMatch = text.match(/\"scoreA\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)/);\n  const scoreBMatch = text.match(/\"scoreB\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)/);\n\n  return {\n    winner: winnerMatch ? winnerMatch[1].toUpperCase() : 'A',\n    reason: reasonMatch ? reasonMatch[1] : 'Fallback parser used',\n    scoreA: scoreAMatch ? Number(scoreAMatch[1]) : null,\n    scoreB: scoreBMatch ? Number(scoreBMatch[1]) : null,\n  };\n}\n\nconst judge = parseJudge($json.message?.content ?? '');\nconst merged = $items('Merge Drafts', 0, 0)[0]?.json ?? {};\nconst winner = String(judge.winner || 'A').toUpperCase() === 'B' ? 'B' : 'A';\nconst script = winner === 'B' ? merged.draftB : merged.draftA;\nconst topic = winner === 'B' ? merged.topicB : merged.topicA;\nconst sourceUrl = winner === 'B' ? merged.urlB : merged.urlA;\n\nreturn [{\n  json: {\n    winner,\n    reason: judge.reason || 'Judge selected best draft',\n    scoreA: judge.scoreA,\n    scoreB: judge.scoreB,\n    topic,\n    sourceUrl,\n    script,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        260
+      ],
+      "id": "select-final-script",
+      "name": "Select Final Script"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tts-worker:8000/tts-save",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.script, voice: 'en-US-AndrewMultilingualNeural', filename: 'monologue_' + $now.format('yyyyLLdd_HHmmss') + '.mp3' } }}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        940,
+        260
+      ],
+      "id": "tts-save",
+      "name": "TTS Save"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tts-worker:8000/align-words",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { audio_path: $json.saved_to_container, ass_name: 'captions_' + $now.format('yyyyLLdd_HHmmss') + '.ass' } }}",
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1180,
+        260
+      ],
+      "id": "align-words",
+      "name": "Align Words"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://tts-worker:8000/render-vertical",
+        "sendBody": true,
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "audio_path",
+              "value": "={{$items('TTS Save', 0, 0)[0].json.saved_to_container}}"
+            },
+            {
+              "name": "ass_path",
+              "value": "={{$json.ass_to_container}}"
+            },
+            {
+              "name": "bg_path",
+              "value": "/assets/bg/night1.mp4"
+            },
+            {
+              "name": "output_name",
+              "value": "={{'doc_' + $now.format('yyyyLLdd_HHmmss') + '.mp4'}}"
+            },
+            {
+              "name": "resolution",
+              "value": "1080x1920"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 1200000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1420,
+        260
+      ],
+      "id": "render-vertical",
+      "name": "Render Vertical"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Reddit Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Reddit Trends": {
+      "main": [
+        [
+          {
+            "node": "Normalize Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Trends": {
+      "main": [
+        [
+          {
+            "node": "Draft A Setup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Draft B Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft A Setup": {
+      "main": [
+        [
+          {
+            "node": "AI Writer A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft B Setup": {
+      "main": [
+        [
+          {
+            "node": "AI Writer B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Writer A": {
+      "main": [
+        [
+          {
+            "node": "Extract Draft A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Writer B": {
+      "main": [
+        [
+          {
+            "node": "Extract Draft B",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Draft A": {
+      "main": [
+        [
+          {
+            "node": "Merge Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Draft B": {
+      "main": [
+        [
+          {
+            "node": "Merge Drafts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Drafts": {
+      "main": [
+        [
+          {
+            "node": "Judge Best Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Best Draft": {
+      "main": [
+        [
+          {
+            "node": "Select Final Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Final Script": {
+      "main": [
+        [
+          {
+            "node": "TTS Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS Save": {
+      "main": [
+        [
+          {
+            "node": "Align Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Align Words": {
+      "main": [
+        [
+          {
+            "node": "Render Vertical",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "ai-video-factory-full-v1"
+}

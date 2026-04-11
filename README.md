@@ -41,3 +41,22 @@ Simple project to generate a short video with:
 ```bash
 docker compose up --build
 ```
+
+## Upgraded n8n flow
+
+An importable full workflow is now included at:
+
+- `n8n/workflows/ai_video_factory_full.json`
+
+This upgraded flow covers:
+
+1. Trend fetch
+2. Draft generation
+3. Draft judging
+4. TTS generation
+5. Word alignment
+6. Vertical video rendering
+
+To open it live in n8n, see:
+
+- `docs/n8n_live_upgrade_guide.md`

@@ -21,3 +21,7 @@ n8n/storage/
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+# Local debug/temp files
+__pycache__/
+.tmp_exported_workflows
