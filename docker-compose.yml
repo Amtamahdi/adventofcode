@@ -1,0 +1,43 @@
+﻿services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_SECURE_COOKIE=false
+      - N8N_RESTRICT_FILE_ACCESS_TO=/output,/tmp,/home/node/.n8n
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
+    volumes:
+      - ./n8n:/home/node/.n8n
+      - ./output:/output
+    depends_on:
+      - ollama
+      - tts-worker
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+
+  tts-worker:
+    build:
+      context: ./tts-worker
+      dockerfile: Dockerfile
+    container_name: tts-worker
+    environment:
+      WHISPER_MODEL_SIZE: tiny
+      WHISPER_DEVICE: cpu
+      WHISPER_COMPUTE: int8
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./output:/output
+      - ./assets:/assets
+
+volumes:
+  ollama_data:

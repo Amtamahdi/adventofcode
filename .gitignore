@@ -1,0 +1,23 @@
+.venv/
+
+# Generated pipeline outputs
+output/
+data/final_script.txt
+data/final_script.json
+data/trends.json
+data/video_title.txt
+data/voice.mp3
+data/subtitles.srt
+
+# n8n runtime state and logs
+n8n/database.sqlite-shm
+n8n/database.sqlite-wal
+n8n/database.sqlite.bak
+n8n/crash.journal
+n8n/n8nEventLog.log
+n8n/n8nEventLog-*.log
+n8n/storage/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
