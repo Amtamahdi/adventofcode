@@ -1,0 +1,136 @@
+{
+  "name": "YouTube Transcript Helper",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        260
+      ],
+      "id": "manual-trigger",
+      "name": "Manual Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "youtube-url",
+              "name": "youtube_url",
+              "value": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+              "type": "string"
+            },
+            {
+              "id": "filename",
+              "name": "filename",
+              "value": "me_at_the_zoo.txt",
+              "type": "string"
+            },
+            {
+              "id": "language",
+              "name": "language",
+              "value": "en",
+              "type": "string"
+            },
+            {
+              "id": "return-text",
+              "name": "return_text",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        260
+      ],
+      "id": "set-inputs",
+      "name": "Set Inputs"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://youtube-transcript-worker:8010/youtube-transcript",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { youtube_url: $json.youtube_url, filename: $json.filename, language: $json.language, return_text: $json.return_text } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -20,
+        260
+      ],
+      "id": "request-transcript",
+      "name": "Request Transcript"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: $json.ok, method: $json.method, video_id: $json.video_id, filename: $json.filename, transcript_path: $json.transcript_path, transcript_text: $json.transcript_text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        260
+      ],
+      "id": "shape-output",
+      "name": "Shape Output"
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Inputs": {
+      "main": [
+        [
+          {
+            "node": "Request Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Transcript": {
+      "main": [
+        [
+          {
+            "node": "Shape Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {}
+}

@@ -40,5 +40,19 @@ services:
       - ./output:/output
       - ./assets:/assets
 
+  youtube-transcript-worker:
+    build:
+      context: ./youtube-transcript-worker
+      dockerfile: Dockerfile
+    container_name: youtube-transcript-worker
+    environment:
+      YT_WHISPER_MODEL_SIZE: tiny
+      YT_WHISPER_DEVICE: cpu
+      YT_WHISPER_COMPUTE: int8
+    ports:
+      - "8010:8010"
+    volumes:
+      - ./output:/output
+
 volumes:
   ollama_data:

@@ -25,3 +25,4 @@ Thumbs.db
 # Local debug/temp files
 __pycache__/
 .tmp_exported_workflows
+n8n/database.sqlite
