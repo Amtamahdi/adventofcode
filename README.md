@@ -39,8 +39,10 @@ This project includes a dedicated container that can:
 
 - accept a YouTube URL
 - fetch existing captions when available
-- fall back to Whisper transcription when captions are missing
+- fall back to Whisper transcription when captions are missing or suspiciously short
 - save the transcript to `output/transcripts/<filename>.txt`
+
+The transcript worker now prefers Intel GPU acceleration through OpenVINO when `/dev/dxg` is available in WSL/Docker. On this machine that means the YouTube transcript service can use the Intel Iris Xe GPU instead of only CPU. The default GPU model is `OpenVINO/whisper-large-v3-int8-ov`, which is a high-quality Whisper Large v3 conversion that is more practical on integrated GPU memory than the full FP16 checkpoint.
 
 Run everything with:
 

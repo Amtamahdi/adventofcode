@@ -31,13 +31,13 @@
             {
               "id": "language",
               "name": "language",
-              "value": "en",
+              "value": "",
               "type": "string"
             },
             {
               "id": "return-text",
               "name": "return_text",
-              "value": false,
+              "value": true,
               "type": "boolean"
             },
             {
@@ -195,7 +195,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { ok: true, status: $json.status, job_id: $json.job_id, filename: $json.result.filename, method: $json.result.method, transcript_path: $json.result.transcript_path, saved_to_host: $json.result.saved_to_host, transcript_text: $json.result.transcript_text, video_id: $json.result.video_id } }];"
+        "jsCode": "return [{ json: { ok: true, status: $json.status, job_id: $json.job_id, filename: $json.result.filename, method: $json.result.method, transcript_path: $json.result.transcript_path, saved_to_host: $json.result.saved_to_host, transcript_text: $json.result.transcript_text, video_id: $json.result.video_id, word_count: $json.result.word_count, caption_word_count: $json.result.caption_word_count, stt_backend: $json.result.stt_backend, stt_model: $json.result.stt_model, stt_device: $json.result.stt_device, stt_compute_type: $json.result.stt_compute_type } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

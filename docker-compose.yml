@@ -46,13 +46,24 @@ services:
       dockerfile: Dockerfile
     container_name: youtube-transcript-worker
     environment:
-      YT_WHISPER_MODEL_SIZE: tiny
-      YT_WHISPER_DEVICE: cpu
-      YT_WHISPER_COMPUTE: int8
+      YT_STT_BACKEND: auto
+      YT_OV_MODEL_ID: OpenVINO/whisper-large-v3-int8-ov
+      YT_OV_DEVICE: GPU
+      YT_COOKIES_FILE: /run/secrets/youtube-cookies.txt
+      YT_WHISPER_MODEL_SIZE: large-v3
+      YT_WHISPER_DEVICE: auto
+      YT_WHISPER_COMPUTE: auto
+      YT_CAPTION_MIN_WORDS: 120
+      YT_TRANSCRIPT_MIN_WORDS: 80
+      LD_LIBRARY_PATH: /usr/lib/wsl/lib
     ports:
       - "8010:8010"
+    devices:
+      - /dev/dxg:/dev/dxg
     volumes:
       - ./output:/output
+      - /usr/lib/wsl:/usr/lib/wsl:ro
+      - ./secrets/youtube-cookies.txt:/run/secrets/youtube-cookies.txt:ro
 
 volumes:
   ollama_data:

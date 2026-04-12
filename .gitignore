@@ -27,3 +27,6 @@ __pycache__/
 .tmp_exported_workflows
 n8n/database.sqlite
 n8n/.n8n/
+
+# Local secrets
+secrets/
