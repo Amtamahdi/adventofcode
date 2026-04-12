@@ -28,6 +28,7 @@ WHISPER_DEVICE = os.getenv("YT_WHISPER_DEVICE", "cpu")
 WHISPER_COMPUTE = os.getenv("YT_WHISPER_COMPUTE", "int8")
 
 WHISPER: WhisperModel | None = None
+YT_API = YouTubeTranscriptApi()
 
 
 class TranscriptIn(BaseModel):
@@ -125,40 +126,16 @@ def _write_transcript(text: str, filename: str) -> Path:
 
 
 def _fetch_youtube_transcript(video_id: str, language: str | None, prefer_generated: bool) -> str | None:
-    languages = [language] if language else None
-
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        fetched = YT_API.fetch(
+            video_id,
+            languages=[language] if language else ("en",),
+            preserve_formatting=False,
+        )
     except Exception:
-        return None
-
-    transcript = None
-    try:
-        if languages:
-            transcript = transcript_list.find_transcript(languages)
-        else:
-            transcript = next(iter(transcript_list), None)
-    except Exception:
-        transcript = None
-
-    if transcript is None and prefer_generated:
-        try:
-            if languages:
-                transcript = transcript_list.find_generated_transcript(languages)
-        except Exception:
-            transcript = None
-
-    if transcript is None:
-        try:
-            transcript = next(iter(transcript_list), None)
-        except Exception:
-            transcript = None
-
-    if transcript is None:
         return None
 
     formatter = TextFormatter()
-    fetched = transcript.fetch()
     return formatter.format_transcript(fetched).strip()
 
 
@@ -193,14 +170,23 @@ def _download_audio(youtube_url: str, workdir: Path) -> Path:
 
 def _transcribe_audio(audio_path: Path, language: str | None) -> str:
     whisper = _get_whisper()
-    segments, _ = whisper.transcribe(
-        str(audio_path),
-        beam_size=5,
-        vad_filter=True,
-        language=language or None,
-    )
-    chunks = [segment.text.strip() for segment in segments if segment.text.strip()]
-    return "\n".join(chunks).strip()
+    attempts = [
+        {"beam_size": 1, "vad_filter": True},
+        {"beam_size": 1, "vad_filter": False},
+    ]
+
+    for options in attempts:
+        segments, _ = whisper.transcribe(
+            str(audio_path),
+            language=language or None,
+            **options,
+        )
+        chunks = [segment.text.strip() for segment in segments if segment.text.strip()]
+        transcript = "\n".join(chunks).strip()
+        if transcript:
+            return transcript
+
+    return ""
 
 
 def _generate_transcript(req: TranscriptIn) -> dict[str, Any]:

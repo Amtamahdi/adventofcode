@@ -19,13 +19,13 @@
             {
               "id": "youtube-url",
               "name": "youtube_url",
-              "value": "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+              "value": "https://www.youtube.com/watch?v=00CKQmBpsIc",
               "type": "string"
             },
             {
               "id": "filename",
               "name": "filename",
-              "value": "async_transcript.txt",
+              "value": "yt_00CKQmBpsIc.txt",
               "type": "string"
             },
             {
@@ -37,7 +37,19 @@
             {
               "id": "return-text",
               "name": "return_text",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "prefer-generated-captions",
+              "name": "prefer_generated_captions",
               "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "force-transcribe",
+              "name": "force_transcribe",
+              "value": false,
               "type": "boolean"
             }
           ]
@@ -60,7 +72,7 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ { youtube_url: $json.youtube_url, filename: $json.filename, language: $json.language, return_text: $json.return_text } }}",
+        "jsonBody": "={{ { youtube_url: $json.youtube_url, filename: $json.filename, language: $json.language, return_text: $json.return_text, prefer_generated_captions: $json.prefer_generated_captions, force_transcribe: $json.force_transcribe } }}",
         "options": {
           "response": {
             "response": {
@@ -81,7 +93,7 @@
     },
     {
       "parameters": {
-        "amount": 30,
+        "amount": 10,
         "unit": "seconds"
       },
       "type": "n8n-nodes-base.wait",
@@ -91,7 +103,7 @@
         300
       ],
       "id": "wait-before-check",
-      "name": "Wait 30s"
+      "name": "Wait 10s"
     },
     {
       "parameters": {
@@ -183,7 +195,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { ok: true, status: $json.status, job_id: $json.job_id, filename: $json.result.filename, method: $json.result.method, transcript_path: $json.result.transcript_path, transcript_text: $json.result.transcript_text, video_id: $json.result.video_id } }];"
+        "jsCode": "return [{ json: { ok: true, status: $json.status, job_id: $json.job_id, filename: $json.result.filename, method: $json.result.method, transcript_path: $json.result.transcript_path, saved_to_host: $json.result.saved_to_host, transcript_text: $json.result.transcript_text, video_id: $json.result.video_id } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -196,7 +208,7 @@
     },
     {
       "parameters": {
-        "jsCode": "throw new Error($json.error || 'Transcript job failed');"
+        "jsCode": "throw new Error('Transcript job failed [' + ($json.status || 'unknown') + ']: ' + ($json.error || 'No error message returned'));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -235,14 +247,14 @@
       "main": [
         [
           {
-            "node": "Wait 30s",
+            "node": "Wait 10s",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Wait 30s": {
+    "Wait 10s": {
       "main": [
         [
           {
@@ -293,7 +305,7 @@
         ],
         [
           {
-            "node": "Wait 30s",
+            "node": "Wait 10s",
             "type": "main",
             "index": 0
           }
